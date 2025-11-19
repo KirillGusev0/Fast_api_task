@@ -1,54 +1,24 @@
 # -*- coding: utf-8 -*-
 
-from pydantic import Field, BaseModel, ConfigDict, EmailStr
+# apps/user/models.py
 from typing import Optional
-from itertools import count
-from pydantic.dataclasses import dataclass
-from dataclasses import field
+from datetime import datetime
 
-_id_counter_user = count(1)
+from sqlalchemy import String, Integer, DateTime, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
-def id_gen_user():
-    return next(_id_counter_user)
+from db.database import Base  
 
 
+class User(Base):
+    __tablename__ = "users"
 
-class User(BaseModel):
-    
-        
-    model_config = ConfigDict(
-       title="User",
-       description = "User model",
-       populate_by_name=True
-    )
-    
-   
-           
-    
-    id: int = Field(default_factory = id_gen_user, gt=0)
-    name: str = Field(min_length=1)
-    username: str = Field( min_length=1)
-    password: str = Field(min_length=1)
-    email: Optional[EmailStr] = None
-    
-@dataclass
-class UserStorage:
-    _instance = None
-    _users: list[User] = field(default_factory=list)
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super().__new__(cls)
-            cls._instance._users = []
-        return cls._instance
-
-    def add(self, new_data: User):
-        self._users.append(new_data)
-
-    def get_all(self):
-        return self._users
-    
-    
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    username: Mapped[str] = mapped_column(String(100), nullable=False, unique=True, index=True)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True, unique=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
+    projects = relationship("Project", back_populates="person_in_charge", lazy="selectin")

@@ -1,27 +1,20 @@
 # -*- coding: utf-8 -*-
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from utils.middleware import jwt_middleware
-from apps.user.routers import user_router
-from apps.auth.routers import router as auth_router
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from routers.api_v1_router import api_v1_router
+from utils.middleware import DBErrorMiddleware
 from settings.settings import settings
 
-app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG)
+app = FastAPI(title="FastAPI Project App")
 
-app.middleware("http")(jwt_middleware)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"], allow_credentials=True,
-    allow_methods=["*"], allow_headers=["*"]
-)
+# Middleware
+app.add_middleware(BaseHTTPMiddleware, dispatch=DBErrorMiddleware())
 
-app.include_router(user_router, prefix="/users", tags=["Users"])
-app.include_router(auth_router, prefix="/auth", tags=["Auth"])
+# Routers
+app.include_router(api_v1_router, prefix="/api/v1")
+
 
 @app.get("/")
-def root():
-    return {"message": f"{settings.APP_NAME} is running"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+async def root():
+    return {"message": "API is running", "debug": settings.DEBUG}

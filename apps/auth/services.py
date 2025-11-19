@@ -1,18 +1,52 @@
 # -*- coding: utf-8 -*-
-from .schemas import LoginUser, RegisterUser
-from .repository import AuthRepository
-from apps.user.services import UserService
+from typing import Optional
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from apps.auth.repository import AuthRepository
+from apps.auth.schemas import RegisterUser, LoginUser, TokenPair
+
+from utils.jwt import (
+    create_access_token,
+    create_refresh_token,
+    decode_token
+)
+
 
 class AuthService:
     def __init__(self):
-        self.auth_repo = AuthRepository()
-        self.user_service = UserService()
+        self.repo = AuthRepository()
 
-    def register_user(self, data: RegisterUser):
-        
-        return self.user_service.create_user(data)
+    async def register(self, db: AsyncSession, data: RegisterUser):
+        return await self.repo.register_user(db, data)
 
-    def login_user(self, data: LoginUser):
-        user = self.auth_repo.authenticate_user(data.username, data.password)
+    async def login(self, db: AsyncSession, data: LoginUser) -> Optional[TokenPair]:
+        user = await self.repo.authenticate_user(db, data)
+        if not user:
+            return None
+
+        token_data = {"sub": user.username, "user_id": user.id}
+
+        access = create_access_token(token_data)
+        refresh = create_refresh_token(token_data)
+
+        return TokenPair(access_token=access, refresh_token=refresh)
+
+    async def refresh(self, refresh_token: str) -> Optional[TokenPair]:
+        payload = decode_token(refresh_token)
+        if not payload:
+            return None
+
         
-        return {"access_token": "fake_token", "refresh_token": "fake_refresh"}
+        if payload.get("type") != "refresh":
+            return None
+
+        token_data = {
+            "sub": payload.get("sub"),
+            "user_id": payload.get("user_id"),
+        }
+
+        access = create_access_token(token_data)
+        refresh = create_refresh_token(token_data)
+
+        return TokenPair(access_token=access, refresh_token=refresh)
+
