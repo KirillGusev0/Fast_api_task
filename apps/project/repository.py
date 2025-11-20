@@ -9,12 +9,7 @@ from apps.project.models import Project
 
 
 class ProjectRepository:
-    """
-    SQL-oriented CRUD репозиторий для проектов.
-
-    Здесь только SQL: никакой бизнес-логики.
-    """
-
+    
     async def create(self, db: AsyncSession, data) -> Project:
         """
         SQL:
@@ -76,3 +71,4 @@ class ProjectRepository:
         result = await db.execute(stmt)
         await db.commit()
         return result.rowcount > 0
+
